@@ -20,19 +20,21 @@ class SanicTestClient:
         self.port = port
         self.host = host
 
-    def get_new_session(self):
-        return httpx.AsyncClient(verify=False)
+    def get_new_session(self, **kwargs):
+        return httpx.AsyncClient(verify=False, **kwargs)
 
     async def _local_request(self, method, url, *args, **kwargs):
         logger.info(url)
         raw_cookies = kwargs.pop("raw_cookies", None)
+        session_kwargs = kwargs.pop('session_kwargs', {})
 
         if method == "websocket":
             async with websockets.connect(url, *args, **kwargs) as websocket:
                 websocket.opened = websocket.open
                 return websocket
         else:
-            async with self.get_new_session() as session:
+            print(f"{session_kwargs=}")
+            async with self.get_new_session(**session_kwargs) as session:
 
                 try:
                     response = await getattr(session, method.lower())(
@@ -66,13 +68,15 @@ class SanicTestClient:
         uri="/",
         gather_request=True,
         debug=False,
-        server_kwargs={"auto_reload": False},
+        server_kwargs=None,
         host=None,
         *request_args,
         **request_kwargs,
     ):
         results = [None, None]
         exceptions = []
+
+        server_kwargs = server_kwargs or {"auto_reload": False}
 
         if gather_request:
 
@@ -192,6 +196,7 @@ class SanicASGITestClient(httpx.AsyncClient):
     ) -> None:
         app.__class__.__call__ = app_call_with_return
         app.asgi = True
+        self.sanic_app = app
 
         self.last_request = None
 
@@ -245,11 +250,12 @@ class SanicASGITestClient(httpx.AsyncClient):
         }
 
         async def receive():
+
             return {}
 
         async def send(message):
             pass
 
-        await self.app(scope, receive, send)
+        await self.sanic_app(scope, receive, send)
 
         return None, {}

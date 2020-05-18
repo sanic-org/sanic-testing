@@ -14,7 +14,7 @@ def open_local(paths, mode="r", encoding="utf8"):
     return codecs.open(path, mode, encoding)
 
 
-with open_local(["sanic_test", "__init__.py"], encoding="latin1") as fp:
+with open_local(["sanic_testing", "__init__.py"], encoding="latin1") as fp:
     try:
         version = re.findall(
             r"^__version__ = \"([^']+)\"\r?$", fp.read(), re.M
@@ -26,16 +26,16 @@ with open_local(["README.md"]) as rm:
     long_description = rm.read()
 
 setup_kwargs = {
-    "name": "sanic-test",
+    "name": "sanic-testing",
     "version": version,
-    "url": "https://github.com/huge-success/sanic-test/",
+    "url": "https://github.com/huge-success/sanic-testing/",
     "license": "MIT",
     "author": "Adam Hopkins",
     "author_email": "admhpkns@gmail.com",
     "description": ("Core testing clients for Sanic"),
     "long_description": long_description,
     "long_description_content_type": 'text/markdown',
-    "packages": ["sanic_test"],
+    "packages": ["sanic_testing"],
     "platforms": "any",
     "classifiers": [
         "Development Status :: 3 - Alpha",
@@ -46,7 +46,7 @@ setup_kwargs = {
         "Programming Language :: Python :: 3.8",
     ],
 }
-requirements = ["httpx", "websockets"]
+requirements = ["httpx>=0.12.1", "websockets", "httpcore>=0.8.4"]
 
 tests_require = ["pytest", "sanic", "pytest-asyncio"]
 
