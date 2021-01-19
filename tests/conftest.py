@@ -1,8 +1,6 @@
 import pytest
-
 from sanic import Sanic, response
-from sanic.asgi import ASGIApp
-from sanic_test import TestManager
+from sanic_testing import TestManager
 
 
 @pytest.fixture
@@ -10,7 +8,9 @@ def app():
     sanic_app = Sanic(__name__)
     TestManager(sanic_app)
 
-    @sanic_app.route("/", methods=["GET", "POST", "PATCH", "PUT", "DELETE", "OPTIONS"])
+    @sanic_app.route(
+        "/", methods=["GET", "POST", "PATCH", "PUT", "DELETE", "OPTIONS"]
+    )
     def basic(request):
         return response.text("foo")
 

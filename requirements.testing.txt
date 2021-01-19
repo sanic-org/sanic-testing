@@ -1,6 +1,4 @@
 #-e git+git@github.com:huge-success/sanic.git@c85f99254ff5ef80a4eceefd4ed3a5b09b68d7ab#egg=sanic
--e ../sanic
-pytest==5.4.2
-httpx==0.12.1
-websockets==8.1
+sanic
+pytest
 pytest-asyncio

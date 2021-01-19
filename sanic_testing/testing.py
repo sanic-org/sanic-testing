@@ -1,47 +1,66 @@
+import typing
 from json import JSONDecodeError
 from socket import socket
 
 import httpx
 import websockets
+from sanic import Sanic
 from sanic.asgi import ASGIApp
 from sanic.exceptions import MethodNotSupported
 from sanic.log import logger
-from sanic.response import text
+from sanic.request import Request
+from sanic.response import HTTPResponse, text
 
 ASGI_HOST = "mockserver"
+ASGI_PORT = 1234
+ASGI_BASE_URL = f"http://{ASGI_HOST}:{ASGI_PORT}"
 HOST = "127.0.0.1"
-PORT = 42101
+PORT = None
+
+Sanic.test_mode = True
 
 
 class SanicTestClient:
-    def __init__(self, app, port=PORT, host=HOST):
+    def __init__(
+        self, app: Sanic, port: typing.Optional[int] = PORT, host: str = HOST
+    ) -> None:
         """Use port=None to bind to a random port"""
         self.app = app
         self.port = port
         self.host = host
 
-    def get_new_session(self, **kwargs):
+    def get_new_session(self, **kwargs) -> httpx.AsyncClient:
         return httpx.AsyncClient(verify=False, **kwargs)
+        # return httpx.Client(verify=False)
 
-    async def _local_request(self, method, url, *args, **kwargs):
+    async def _local_request(self, method: str, url: str, *args, **kwargs):
         logger.info(url)
         raw_cookies = kwargs.pop("raw_cookies", None)
-        session_kwargs = kwargs.pop('session_kwargs', {})
+        session_kwargs = kwargs.pop("session_kwargs", {})
 
         if method == "websocket":
             async with websockets.connect(url, *args, **kwargs) as websocket:
                 websocket.opened = websocket.open
                 return websocket
         else:
-            print(f"{session_kwargs=}")
             async with self.get_new_session(**session_kwargs) as session:
 
                 try:
+                    if method == "request":
+                        args = [url] + list(args)
+                        url = kwargs.pop("http_method", "GET").upper()
                     response = await getattr(session, method.lower())(
                         url, *args, **kwargs
                     )
-                except NameError:
-                    raise Exception(response.status_code)
+                except httpx.HTTPError as e:
+                    if hasattr(e, "response"):
+                        response = e.response
+                    else:
+                        logger.error(
+                            f"{method.upper()} {url} received no response!",
+                            exc_info=True,
+                        )
+                        return None
 
                 response.body = await response.aread()
                 response.status = response.status_code
@@ -60,19 +79,19 @@ class SanicTestClient:
                     for cookie in response.cookies.jar:
                         response.raw_cookies[cookie.name] = cookie
 
-                return response
+            return response
 
     def _sanic_endpoint_test(
         self,
-        method="get",
-        uri="/",
-        gather_request=True,
-        debug=False,
-        server_kwargs=None,
-        host=None,
+        method: str = "get",
+        uri: str = "/",
+        gather_request: bool = True,
+        debug: bool = False,
+        server_kwargs: typing.Optional[typing.Dict[str, typing.Any]] = None,
+        host: str = None,
         *request_args,
         **request_kwargs,
-    ):
+    ) -> typing.Tuple[typing.Union[Request, HTTPResponse]]:
         results = [None, None]
         exceptions = []
 
@@ -97,7 +116,9 @@ class SanicTestClient:
 
         if self.port:
             server_kwargs = dict(
-                host=host or self.host, port=self.port, **server_kwargs,
+                host=host or self.host,
+                port=self.port,
+                **server_kwargs,
             )
             host, port = host or self.host, self.port
         else:
@@ -129,7 +150,8 @@ class SanicTestClient:
             except Exception as e:
                 logger.exception("Exception")
                 exceptions.append(e)
-            self.app.stop()
+            finally:
+                self.app.stop()
 
         self.app.run(debug=debug, **server_kwargs)
         self.app.listeners["after_server_start"].pop()
@@ -150,6 +172,9 @@ class SanicTestClient:
                 return results[-1]
             except BaseException:  # noqa
                 raise ValueError(f"Request object expected, got ({results})")
+
+    def request(self, *args, **kwargs):
+        return self._sanic_endpoint_test("request", *args, **kwargs)
 
     def get(self, *args, **kwargs):
         return self._sanic_endpoint_test("get", *args, **kwargs)
@@ -190,13 +215,17 @@ async def app_call_with_return(self, scope, receive, send):
 class SanicASGITestClient(httpx.AsyncClient):
     def __init__(
         self,
-        app,
-        base_url: str = "http://{}".format(ASGI_HOST),
+        app: Sanic,
+        base_url: str = ASGI_BASE_URL,
         suppress_exceptions: bool = False,
     ) -> None:
         app.__class__.__call__ = app_call_with_return
         app.asgi = True
+
         self.sanic_app = app
+
+        transport = httpx.ASGITransport(app=app, client=(ASGI_HOST, ASGI_PORT))
+        super().__init__(transport=transport, base_url=base_url)
 
         self.last_request = None
 
@@ -205,8 +234,6 @@ class SanicASGITestClient(httpx.AsyncClient):
 
         app.request_middleware.appendleft(_collect_request)
 
-        super().__init__(app=app)
-
     async def request(self, method, url, gather_request=True, *args, **kwargs):
 
         if not url.startswith(
@@ -214,7 +241,7 @@ class SanicASGITestClient(httpx.AsyncClient):
         ):
             url = url if url.startswith("/") else f"/{url}"
             scheme = "ws" if method == "websocket" else "http"
-            url = f"{scheme}://{ASGI_HOST}{url}"
+            url = f"{scheme}://{ASGI_HOST}:{ASGI_PORT}{url}"
 
         self.gather_request = gather_request
         response = await super().request(method, url, *args, **kwargs)
@@ -227,7 +254,7 @@ class SanicASGITestClient(httpx.AsyncClient):
     async def websocket(self, uri, subprotocols=None, *args, **kwargs):
         scheme = "ws"
         path = uri
-        root_path = "{}://{}".format(scheme, ASGI_HOST)
+        root_path = f"{scheme}://{ASGI_HOST}:{ASGI_PORT}"
 
         headers = kwargs.get("headers", {})
         headers.setdefault("connection", "upgrade")
@@ -250,7 +277,6 @@ class SanicASGITestClient(httpx.AsyncClient):
         }
 
         async def receive():
-
             return {}
 
         async def send(message):

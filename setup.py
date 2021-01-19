@@ -28,13 +28,13 @@ with open_local(["README.md"]) as rm:
 setup_kwargs = {
     "name": "sanic-testing",
     "version": version,
-    "url": "https://github.com/huge-success/sanic-testing/",
+    "url": "https://github.com/sanic-org/sanic-testing/",
     "license": "MIT",
     "author": "Adam Hopkins",
     "author_email": "admhpkns@gmail.com",
     "description": ("Core testing clients for Sanic"),
     "long_description": long_description,
-    "long_description_content_type": 'text/markdown',
+    "long_description_content_type": "text/markdown",
     "packages": ["sanic_testing"],
     "platforms": "any",
     "classifiers": [
@@ -46,9 +46,9 @@ setup_kwargs = {
         "Programming Language :: Python :: 3.8",
     ],
 }
-requirements = ["httpx>=0.12.1", "websockets", "httpcore>=0.8.4"]
+requirements = ["httpx==0.16.*", "websockets==8.1", "httpcore==0.12.*"]
 
-tests_require = ["pytest", "sanic", "pytest-asyncio"]
+tests_require = ["pytest", "sanic==20.12", "pytest-asyncio"]
 
 setup_kwargs["install_requires"] = requirements
 setup_kwargs["tests_require"] = tests_require

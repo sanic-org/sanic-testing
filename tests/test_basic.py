@@ -1,6 +1,6 @@
 from sanic import Sanic
-from sanic_test import TestManager
-from sanic_test.testing import SanicASGITestClient, SanicTestClient
+from sanic_testing import TestManager
+from sanic_testing.testing import SanicASGITestClient, SanicTestClient
 
 
 def test_legacy_support_initialization(app):

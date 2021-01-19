@@ -1,3 +1,5 @@
+import asyncio
+
 import pytest
 
 from sanic.request import Request
@@ -17,9 +19,11 @@ async def test_basic_asgi_client(app):
 @pytest.mark.asyncio
 async def test_websocket_route(app):
 
+    ev = asyncio.Event()
+
     @app.websocket("/ws")
     async def handler(request, ws):
-        ...
+        ev.set()
 
-    with pytest.raises(Exception):
-        await app.asgi_client.websocket("/ws")
+    await app.asgi_client.websocket("/ws")
+    assert ev.is_set()
