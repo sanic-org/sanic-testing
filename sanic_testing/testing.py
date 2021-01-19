@@ -29,9 +29,16 @@ class SanicTestClient:
         self.port = port
         self.host = host
 
+        @app.listener("after_server_start")
+        def _start_test_mode(sanic, *args, **kwargs):
+            sanic.test_mode = True
+
+        @app.listener("before_server_end")
+        def _end_test_mode(sanic, *args, **kwargs):
+            sanic.test_mode = False
+
     def get_new_session(self, **kwargs) -> httpx.AsyncClient:
         return httpx.AsyncClient(verify=False, **kwargs)
-        # return httpx.Client(verify=False)
 
     async def _local_request(self, method: str, url: str, *args, **kwargs):
         logger.info(url)
@@ -225,12 +232,21 @@ class SanicASGITestClient(httpx.AsyncClient):
         self.sanic_app = app
 
         transport = httpx.ASGITransport(app=app, client=(ASGI_HOST, ASGI_PORT))
+
         super().__init__(transport=transport, base_url=base_url)
 
         self.last_request = None
 
         def _collect_request(request):
             self.last_request = request
+
+        @app.listener("after_server_start")
+        def _start_test_mode(sanic, *args, **kwargs):
+            sanic.test_mode = True
+
+        @app.listener("before_server_end")
+        def _end_test_mode(sanic, *args, **kwargs):
+            sanic.test_mode = False
 
         app.request_middleware.appendleft(_collect_request)
 

@@ -4,13 +4,13 @@ This package is meant to be the core testing utility and clients for testing San
 
 ## Getting Started
 
-    pip install sanic-test
+    pip install sanic-testing
 
 The package is meant to create an almost seemless transition. Therefore, after loading the package, it will attach itself to your Sanic instance and insert test clients.
 
 ```python
 from sanic import Sanic
-from sanic_test import TestManager
+from sanic_testing import TestManager
 
 sanic_app = Sanic(__name__)
 TestManager(sanic_app)
