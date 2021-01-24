@@ -1,6 +1,9 @@
+import asyncio
 import typing
+from asyncio.events import get_event_loop
 from json import JSONDecodeError
 from socket import socket
+from types import SimpleNamespace
 
 import httpx
 import websockets
@@ -46,9 +49,11 @@ class SanicTestClient:
         session_kwargs = kwargs.pop("session_kwargs", {})
 
         if method == "websocket":
+            ws_proxy = SimpleNamespace()
             async with websockets.connect(url, *args, **kwargs) as websocket:
-                websocket.opened = websocket.open
-                return websocket
+                ws_proxy.ws = websocket
+                ws_proxy.opened = True
+            return ws_proxy
         else:
             async with self.get_new_session(**session_kwargs) as session:
 
@@ -154,6 +159,8 @@ class SanicTestClient:
                     method, url, *request_args, **request_kwargs
                 )
                 results[-1] = response
+                if method == "websocket":
+                    await response.ws.close()
             except Exception as e:
                 logger.exception("Exception")
                 exceptions.append(e)
@@ -290,6 +297,7 @@ class SanicASGITestClient(httpx.AsyncClient):
             "root_path": root_path,
             "path": path,
             "query_string": b"",
+            "subprotocols": subprotocols,
         }
 
         async def receive():
@@ -300,4 +308,4 @@ class SanicASGITestClient(httpx.AsyncClient):
 
         await self.sanic_app(scope, receive, send)
 
-        return None, {}
+        return None, {"opened": True}
