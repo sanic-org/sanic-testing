@@ -1,4 +1,3 @@
-#-e git+git@github.com:huge-success/sanic.git@c85f99254ff5ef80a4eceefd4ed3a5b09b68d7ab#egg=sanic
-sanic
+git+git://github.com/sanic-org/sanic.git@master#egg=sanic
 pytest
 pytest-asyncio

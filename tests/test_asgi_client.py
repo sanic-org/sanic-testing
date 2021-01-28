@@ -1,13 +1,12 @@
 import asyncio
 
 import pytest
-
 from sanic.request import Request
 
 
 @pytest.mark.asyncio
 async def test_basic_asgi_client(app):
-    for method in ['get', "post", "patch", "put", "delete", "options"]:
+    for method in ["get", "post", "patch", "put", "delete", "options"]:
         request, response = await getattr(app.asgi_client, method)("/")
 
         assert isinstance(request, Request)

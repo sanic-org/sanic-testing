@@ -1,6 +1,4 @@
-import asyncio
 import typing
-from asyncio.events import get_event_loop
 from functools import partial
 from json import JSONDecodeError
 from socket import socket
@@ -8,12 +6,12 @@ from types import SimpleNamespace
 
 import httpx
 import websockets
-from sanic import Sanic
-from sanic.asgi import ASGIApp
-from sanic.exceptions import MethodNotSupported
-from sanic.log import logger
-from sanic.request import Request
-from sanic.response import HTTPResponse, text
+from sanic import Sanic  # type: ignore
+from sanic.asgi import ASGIApp  # type: ignore
+from sanic.exceptions import MethodNotSupported  # type: ignore
+from sanic.log import logger  # type: ignore
+from sanic.request import Request  # type: ignore
+from sanic.response import HTTPResponse, text  # type: ignore
 
 ASGI_HOST = "mockserver"
 ASGI_PORT = 1234
@@ -62,14 +60,14 @@ class SanicTestClient:
 
                 try:
                     if method == "request":
-                        args = [url] + list(args)
+                        args = tuple([url] + list(args))
                         url = kwargs.pop("http_method", "GET").upper()
                     response = await getattr(session, method.lower())(
                         url, *args, **kwargs
                     )
                 except httpx.HTTPError as e:
                     if hasattr(e, "response"):
-                        response = e.response
+                        response = getattr(e, "response")
                     else:
                         logger.error(
                             f"{method.upper()} {url} received no response!",
@@ -140,7 +138,7 @@ class SanicTestClient:
         **request_kwargs,
     ) -> typing.Union[typing.Tuple[Request, HTTPResponse], HTTPResponse]:
         results = [None, None]
-        exceptions = []
+        exceptions: typing.List[Exception] = []
 
         server_kwargs = server_kwargs or {"auto_reload": False}
         _collect_request = partial(self._collect_request, results)
@@ -164,7 +162,9 @@ class SanicTestClient:
             host, port = sock.getsockname()
             self.port = port
 
-        if uri.startswith(("http:", "https:", "ftp:", "ftps://", "//", "ws:", "wss:")):
+        if uri.startswith(
+            ("http:", "https:", "ftp:", "ftps://", "//", "ws:", "wss:")
+        ):
             url = uri
         else:
             uri = uri if uri.startswith("/") else f"/{uri}"
@@ -325,7 +325,9 @@ class SanicASGITestClient(httpx.AsyncClient):
         headers.setdefault("sec-websocket-key", "testserver==")
         headers.setdefault("sec-websocket-version", "13")
         if subprotocols is not None:
-            headers.setdefault("sec-websocket-protocol", ", ".join(subprotocols))
+            headers.setdefault(
+                "sec-websocket-protocol", ", ".join(subprotocols)
+            )
 
         scope = {
             "type": "websocket",
@@ -357,5 +359,6 @@ class SanicASGITestClient(httpx.AsyncClient):
         except LookupError:
             pass
         self.__dict__.update(d)
-        # Need to create a new CookieJar when unpickling, because it was killed on Pickle
+        # Need to create a new CookieJar when unpickling,
+        # because it was killed on Pickle
         self._cookies = httpx.Cookies()

@@ -1,4 +1,4 @@
-from sanic import Sanic
+from sanic import Sanic  # type: ignore
 
 from sanic_testing.testing import SanicASGITestClient, SanicTestClient
 
