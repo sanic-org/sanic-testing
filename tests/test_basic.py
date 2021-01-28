@@ -1,6 +1,8 @@
-import pytest
 import pickle
+
+import pytest
 from sanic import Sanic
+
 from sanic_testing import TestManager
 from sanic_testing.testing import SanicASGITestClient, SanicTestClient
 
@@ -14,6 +16,7 @@ def test_manager_initialization(manager):
     assert isinstance(manager.test_client, SanicTestClient)
     assert isinstance(manager.asgi_client, SanicASGITestClient)
     assert isinstance(manager, TestManager)
+
 
 @pytest.mark.parametrize("protocol", [3, 4])
 def test_pickle_app(protocol):
