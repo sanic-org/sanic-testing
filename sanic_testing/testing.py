@@ -265,7 +265,7 @@ class SanicASGITestClient(httpx.AsyncClient):
         suppress_exceptions: bool = False,
     ) -> None:
 
-        app.__class__.__call__ = app_call_with_return
+        app.__class__.__call__ = app_call_with_return  # type: ignore
         app.asgi = True
 
         self.sanic_app = app
@@ -294,9 +294,9 @@ class SanicASGITestClient(httpx.AsyncClient):
     def _end_test_mode(cls, sanic, *args, **kwargs):
         sanic.test_mode = False
 
-    async def request(
+    async def request(  # type: ignore
         self, method, url, gather_request=True, *args, **kwargs
-    ) -> typing.Tuple[typing.Optional[Request], httpx.Response]:
+    ) -> typing.Tuple[typing.Optional[Request], HTTPResponse]:
 
         if not url.startswith(
             ("http:", "https:", "ftp:", "ftps://", "//", "ws:", "wss:")
@@ -309,10 +309,13 @@ class SanicASGITestClient(httpx.AsyncClient):
             self.sanic_app.request_middleware.appendleft(self._collect_request)
 
         self.gather_request = gather_request
-        response = await super().request(method, url, *args, **kwargs)
-        response.status = response.status_code
-        response.body = response.content
-        response.content_type = response.headers.get("content-type")
+        httpx_response = await super().request(method, url, *args, **kwargs)
+        response = HTTPResponse(
+            httpx_response.content,
+            httpx_response.status_code,
+            httpx_response.headers,
+            httpx_response.headers.get("content-type"),
+        )
         if gather_request:
             return self.last_request, response
         return None, response
