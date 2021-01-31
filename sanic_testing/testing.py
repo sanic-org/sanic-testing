@@ -136,7 +136,7 @@ class SanicTestClient:
         host: str = None,
         *request_args,
         **request_kwargs,
-    ) -> typing.Union[typing.Tuple[Request, HTTPResponse], HTTPResponse]:
+    ) -> typing.Tuple[typing.Optional[Request], HTTPResponse]:
         results = [None, None]
         exceptions: typing.List[Exception] = []
 
@@ -199,6 +199,10 @@ class SanicTestClient:
 
             try:
                 request, response = results
+                if response is None:
+                    raise ValueError(
+                        "No response returned to Sanic Test Client."
+                    )
                 return request, response
             except BaseException:  # noqa
                 raise ValueError(
@@ -206,7 +210,11 @@ class SanicTestClient:
                 )
         else:
             try:
-                return results[-1]
+                if results[-1] is None:
+                    raise ValueError(
+                        "No response returned to Sanic Test Client."
+                    )
+                return None, results[-1]
             except BaseException:  # noqa
                 raise ValueError(f"Request object expected, got ({results})")
 
@@ -257,7 +265,7 @@ class SanicASGITestClient(httpx.AsyncClient):
         suppress_exceptions: bool = False,
     ) -> None:
 
-        app.__class__.__call__ = app_call_with_return
+        app.__class__.__call__ = app_call_with_return  # type: ignore
         app.asgi = True
 
         self.sanic_app = app
@@ -286,7 +294,9 @@ class SanicASGITestClient(httpx.AsyncClient):
     def _end_test_mode(cls, sanic, *args, **kwargs):
         sanic.test_mode = False
 
-    async def request(self, method, url, gather_request=True, *args, **kwargs):
+    async def request(  # type: ignore
+        self, method, url, gather_request=True, *args, **kwargs
+    ) -> typing.Tuple[typing.Optional[Request], HTTPResponse]:
 
         if not url.startswith(
             ("http:", "https:", "ftp:", "ftps://", "//", "ws:", "wss:")
@@ -299,13 +309,16 @@ class SanicASGITestClient(httpx.AsyncClient):
             self.sanic_app.request_middleware.appendleft(self._collect_request)
 
         self.gather_request = gather_request
-        response = await super().request(method, url, *args, **kwargs)
-        response.status = response.status_code
-        response.body = response.content
-        response.content_type = response.headers.get("content-type")
+        httpx_response = await super().request(method, url, *args, **kwargs)
+        response = HTTPResponse(
+            httpx_response.content,
+            httpx_response.status_code,
+            httpx_response.headers,
+            httpx_response.headers.get("content-type"),
+        )
         if gather_request:
             return self.last_request, response
-        return response
+        return None, response
 
     @classmethod
     async def _ws_receive(cls):

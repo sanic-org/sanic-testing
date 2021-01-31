@@ -1,10 +1,14 @@
 import asyncio
 
+import pytest
 from sanic.request import Request
 
 
-def test_basic_test_client(app):
-    request, response = app.test_client.get("/")
+@pytest.mark.parametrize(
+    "method", ["get", "post", "patch", "put", "delete", "options"]
+)
+def test_basic_test_client(app, method):
+    request, response = getattr(app.test_client, method)("/")
 
     assert isinstance(request, Request)
     assert response.body == b"foo"
