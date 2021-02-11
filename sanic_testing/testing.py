@@ -1,7 +1,7 @@
 import typing
 from functools import partial
 from json import JSONDecodeError
-from socket import CAN_SFF_MASK, socket
+from socket import socket
 from types import SimpleNamespace
 
 import httpx
@@ -11,7 +11,7 @@ from sanic.asgi import ASGIApp  # type: ignore
 from sanic.exceptions import MethodNotSupported  # type: ignore
 from sanic.log import logger  # type: ignore
 from sanic.request import Request  # type: ignore
-from sanic.response import HTTPResponse, text  # type: ignore
+from sanic.response import text  # type: ignore
 
 ASGI_HOST = "mockserver"
 ASGI_PORT = 1234
