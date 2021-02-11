@@ -233,7 +233,8 @@ class SanicTestClient:
             except BaseException:  # noqa
                 if not allow_none:
                     raise ValueError(
-                        f"Request and response object expected, got ({results})"
+                        "Request and response object expected, "
+                        f"got ({results})"
                     )
         else:
             try:
