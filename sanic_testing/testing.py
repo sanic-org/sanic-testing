@@ -11,7 +11,7 @@ from sanic.asgi import ASGIApp  # type: ignore
 from sanic.exceptions import MethodNotSupported  # type: ignore
 from sanic.log import logger  # type: ignore
 from sanic.request import Request  # type: ignore
-from sanic.response import HTTPResponse, text  # type: ignore
+from sanic.response import text  # type: ignore
 
 ASGI_HOST = "mockserver"
 ASGI_PORT = 1234
@@ -20,6 +20,31 @@ HOST = "127.0.0.1"
 PORT = None
 
 Sanic.test_mode = True
+
+
+class TestingResponse(httpx.Response):
+    @property
+    def status(self):
+        return self.status_code
+
+    @property
+    def body(self):
+        return self.content
+
+    @property
+    def content_type(self):
+        return self.headers.get("content-type")
+
+    @property
+    def json(self):
+        if getattr(self, "_json", None):
+            return self._json
+        try:
+            self._json = super().json()
+        except (JSONDecodeError, UnicodeDecodeError):
+            self._json = None
+
+        return self._json
 
 
 class SanicTestClient:
@@ -75,16 +100,7 @@ class SanicTestClient:
                         )
                         return None
 
-                response.body = await response.aread()
-                response.status = response.status_code
-                response.content_type = response.headers.get("content-type")
-
-                # response can be decoded as json after response._content
-                # is set by response.aread()
-                try:
-                    response.json = response.json()
-                except (JSONDecodeError, UnicodeDecodeError):
-                    response.json = None
+                response.__class__ = TestingResponse
 
                 if raw_cookies:
                     response.raw_cookies = {}
@@ -134,17 +150,30 @@ class SanicTestClient:
         debug: bool = False,
         server_kwargs: typing.Optional[typing.Dict[str, typing.Any]] = None,
         host: str = None,
+        allow_none: bool = False,
         *request_args,
         **request_kwargs,
-    ) -> typing.Tuple[typing.Optional[Request], HTTPResponse]:
+    ) -> typing.Tuple[
+        typing.Optional[Request], typing.Optional[TestingResponse]
+    ]:
         results = [None, None]
         exceptions: typing.List[Exception] = []
 
         server_kwargs = server_kwargs or {"auto_reload": False}
         _collect_request = partial(self._collect_request, results)
 
+        # This is required for the new Sanic router.
+        # Once that is merged we can remove this here.
+        try:
+            self.app.router.reset()
+            self.app.router.finalize()
+        except AttributeError:
+            ...
+
         if gather_request:
-            self.app.request_middleware.appendleft(_collect_request)
+            self.app.request_middleware.appendleft(  # type: ignore
+                _collect_request
+            )
 
         self.app.exception(MethodNotSupported)(self._error_handler)
 
@@ -193,30 +222,41 @@ class SanicTestClient:
 
         if gather_request:
             try:
-                self.app.request_middleware.remove(_collect_request)
+                self.app.request_middleware.remove(  # type: ignore
+                    _collect_request
+                )
             except BaseException:  # noqa
                 pass
 
             try:
                 request, response = results
                 if response is None:
-                    raise ValueError(
-                        "No response returned to Sanic Test Client."
-                    )
+                    if not allow_none:
+                        raise ValueError(
+                            "No response returned to Sanic Test Client."
+                        )
                 return request, response
             except BaseException:  # noqa
-                raise ValueError(
-                    f"Request and response object expected, got ({results})"
-                )
+                if not allow_none:
+                    raise ValueError(
+                        "Request and response object expected, "
+                        f"got ({results})"
+                    )
+                return None, None
         else:
             try:
                 if results[-1] is None:
-                    raise ValueError(
-                        "No response returned to Sanic Test Client."
-                    )
+                    if not allow_none:
+                        raise ValueError(
+                            "No response returned to Sanic Test Client."
+                        )
                 return None, results[-1]
             except BaseException:  # noqa
-                raise ValueError(f"Request object expected, got ({results})")
+                if not allow_none:
+                    raise ValueError(
+                        f"Request object expected, got ({results})"
+                    )
+                return None, None
 
     def request(self, *args, **kwargs):
         return self._sanic_endpoint_test("request", *args, **kwargs)
@@ -296,7 +336,17 @@ class SanicASGITestClient(httpx.AsyncClient):
 
     async def request(  # type: ignore
         self, method, url, gather_request=True, *args, **kwargs
-    ) -> typing.Tuple[typing.Optional[Request], HTTPResponse]:
+    ) -> typing.Tuple[
+        typing.Optional[Request], typing.Optional[TestingResponse]
+    ]:
+
+        # This is required for the new Sanic router.
+        # Once that is merged we can remove this here.
+        try:
+            self.sanic_app.router.reset()
+            self.sanic_app.router.finalize()
+        except AttributeError:
+            ...
 
         if not url.startswith(
             ("http:", "https:", "ftp:", "ftps://", "//", "ws:", "wss:")
@@ -306,19 +356,18 @@ class SanicASGITestClient(httpx.AsyncClient):
             url = f"{scheme}://{ASGI_HOST}:{ASGI_PORT}{url}"
 
         if self._collect_request not in self.sanic_app.request_middleware:
-            self.sanic_app.request_middleware.appendleft(self._collect_request)
+            self.sanic_app.request_middleware.appendleft(  # type: ignore
+                self._collect_request
+            )
 
         self.gather_request = gather_request
-        httpx_response = await super().request(method, url, *args, **kwargs)
-        response = HTTPResponse(
-            httpx_response.content,
-            httpx_response.status_code,
-            httpx_response.headers,
-            httpx_response.headers.get("content-type"),
-        )
+        response = await super().request(method, url, *args, **kwargs)
+
+        response.__class__ = TestingResponse
+
         if gather_request:
-            return self.last_request, response
-        return None, response
+            return self.last_request, response  # type: ignore
+        return None, response  # type: ignore
 
     @classmethod
     async def _ws_receive(cls):
@@ -353,6 +402,14 @@ class SanicASGITestClient(httpx.AsyncClient):
             "query_string": b"",
             "subprotocols": subprotocols,
         }
+
+        # This is required for the new Sanic router.
+        # Once that is merged we can remove this here.
+        try:
+            self.sanic_app.router.reset()
+            self.sanic_app.router.finalize()
+        except AttributeError:
+            ...
 
         await self.sanic_app(scope, self._ws_receive, self._ws_send)
 
