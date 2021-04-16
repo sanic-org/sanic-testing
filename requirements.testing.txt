@@ -1,3 +1,3 @@
-git+git://github.com/sanic-org/sanic.git@master#egg=sanic
+git+git://github.com/sanic-org/sanic.git@main#egg=sanic
 pytest
 pytest-asyncio
