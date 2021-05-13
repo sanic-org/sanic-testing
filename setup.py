@@ -46,9 +46,12 @@ setup_kwargs = {
         "Programming Language :: Python :: 3.8",
     ],
 }
-requirements = ["httpx==0.16.*", "websockets==8.1", "httpcore==0.12.*"]
+requirements = [
+    "httpx==0.18.*",
+    "websockets==8.1",
+]
 
-tests_require = ["pytest", "sanic==20.12", "pytest-asyncio"]
+tests_require = ["pytest", "sanic==21.3", "pytest-asyncio"]
 
 setup_kwargs["install_requires"] = requirements
 setup_kwargs["tests_require"] = tests_require
