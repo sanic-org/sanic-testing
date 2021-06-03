@@ -48,7 +48,7 @@ setup_kwargs = {
 }
 requirements = [
     "httpx==0.18.*",
-    "websockets>=9.0",
+    "websockets>=8.1",
 ]
 
 tests_require = ["pytest", "sanic==21.3", "pytest-asyncio"]
