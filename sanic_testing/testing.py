@@ -1,17 +1,18 @@
 import typing
 from functools import partial
+from ipaddress import IPv6Address, ip_address
 from json import JSONDecodeError
-from socket import socket
+from socket import AF_INET6, SOCK_STREAM, socket
 from types import SimpleNamespace
 
 import httpx
-import websockets
 from sanic import Sanic  # type: ignore
 from sanic.asgi import ASGIApp  # type: ignore
 from sanic.exceptions import MethodNotSupported  # type: ignore
 from sanic.log import logger  # type: ignore
 from sanic.request import Request  # type: ignore
 from sanic.response import text  # type: ignore
+from websockets import connect
 
 ASGI_HOST = "mockserver"
 ASGI_PORT = 1234
@@ -76,7 +77,7 @@ class SanicTestClient:
 
         if method == "websocket":
             ws_proxy = SimpleNamespace()
-            async with websockets.connect(url, *args, **kwargs) as websocket:
+            async with connect(url, *args, **kwargs) as websocket:
                 ws_proxy.ws = websocket
                 ws_proxy.opened = True
             return ws_proxy
@@ -185,10 +186,22 @@ class SanicTestClient:
             )
             host, port = host or self.host, self.port
         else:
-            sock = socket()
-            sock.bind((host or self.host, 0))
+            bind = host or self.host
+            ip = ip_address(bind)
+            if isinstance(ip, IPv6Address):
+                sock = socket(AF_INET6, SOCK_STREAM)
+                port = ASGI_PORT
+            else:
+                sock = socket()
+                port = 0
+            sock.bind((bind, port))
             server_kwargs = dict(sock=sock, **server_kwargs)
-            host, port = sock.getsockname()
+
+            if isinstance(ip, IPv6Address):
+                host, port, _, _ = sock.getsockname()
+                host = f"[{host}]"
+            else:
+                host, port = sock.getsockname()
             self.port = port
 
         if uri.startswith(
