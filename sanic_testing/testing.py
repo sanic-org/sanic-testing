@@ -56,8 +56,14 @@ class SanicTestClient:
         self.app = app
         self.port = port
         self.host = host
-        app.listener("after_server_start")(self._start_test_mode)
-        app.listener("before_server_stop")(self._end_test_mode)
+        self._do_request = lambda: ...
+        self.app.test_mode = True
+        # app.listener("after_server_start")(self._start_test_mode)
+        # app.listener("before_server_stop")(self._end_test_mode)
+        app.listener("after_server_start")(self._run_request)
+
+    def _run_request(self, *args, **kwargs):
+        return self._do_request(*args, **kwargs)
 
     @classmethod
     def _start_test_mode(cls, sanic, *args, **kwargs):
@@ -216,19 +222,16 @@ class SanicTestClient:
         # known until this function is called, so fix that here
         url = url.replace(":None/", f":{port}/")
 
-        self.app.listener("after_server_start")(
-            partial(
-                self._collect_response,
-                method,
-                url,
-                exceptions,
-                results,
-                **request_kwargs,
-            )
+        self._do_request = partial(
+            self._collect_response,
+            method,
+            url,
+            exceptions,
+            results,
+            **request_kwargs,
         )
 
         self.app.run(debug=debug, **server_kwargs)
-        self.app.listeners["after_server_start"].pop()
 
         if exceptions:
             raise ValueError(f"Exception during request: {exceptions}")
@@ -356,8 +359,7 @@ class SanicASGITestClient(httpx.AsyncClient):
         # This is required for the new Sanic router.
         # Once that is merged we can remove this here.
         try:
-            self.sanic_app.router.reset()
-            self.sanic_app.router.finalize()
+            await self.sanic_app._startup()
         except AttributeError:
             ...
 
