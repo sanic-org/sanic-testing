@@ -12,7 +12,7 @@ from sanic.exceptions import MethodNotSupported  # type: ignore
 from sanic.log import logger  # type: ignore
 from sanic.request import Request  # type: ignore
 from sanic.response import text  # type: ignore
-from websockets import connect
+from websockets.legacy.client import connect
 
 ASGI_HOST = "mockserver"
 ASGI_PORT = 1234
