@@ -56,12 +56,15 @@ class ReusableClient:
         self._loop._stopping = False
         self.app.router.reset()
         self.app.signal_router.reset()
-        self._run(Sanic.finalize(self.app, None))
-        trigger_events(self.app.listeners["before_server_start"], self._loop)
+        self._run(self.app._startup())
+        self._run(self.app._server_event("init", "before", loop=self._loop))
         self._server = self._run(self._server_co)
-        trigger_events(self.app.listeners["after_server_start"], self._loop)
+        self._run(self.app._server_event("init", "after", loop=self._loop))
 
     def stop(self):
+        self._run(
+            self.app._server_event("shutdown", "before", loop=self._loop)
+        )
         if self._server:
             self._server.close()
             self._run(self._server.wait_closed())
@@ -70,6 +73,7 @@ class ReusableClient:
         if self._session:
             self._run(self._session.aclose())
             self._session = None
+        self._run(self.app._server_event("shutdown", "after", loop=self._loop))
 
     def _sanic_endpoint_test(
         self,
