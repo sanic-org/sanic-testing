@@ -56,11 +56,11 @@ class SanicTestClient:
         self.app = app
         self.port = port
         self.host = host
-        self._do_request = lambda: ...
         self.app.test_mode = True
-        # app.listener("after_server_start")(self._start_test_mode)
-        # app.listener("before_server_stop")(self._end_test_mode)
         app.listener("after_server_start")(self._run_request)
+
+    def _do_request(self):
+        ...
 
     def _run_request(self, *args, **kwargs):
         return self._do_request(*args, **kwargs)

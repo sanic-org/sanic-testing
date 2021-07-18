@@ -2,7 +2,6 @@ import pickle
 
 import pytest
 from sanic import Sanic
-
 from sanic_testing import TestManager
 from sanic_testing.testing import SanicASGITestClient, SanicTestClient
 
@@ -24,6 +23,8 @@ def test_pickle_app(protocol):
     manager = TestManager(app)
     assert app._test_manager == manager
     my_dict = {"app": app}
+    app.router.reset()
+    app.signal_router.reset()
     my_pickled = pickle.dumps(my_dict, protocol=protocol)
     del my_dict
     del app
