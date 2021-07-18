@@ -350,6 +350,8 @@ class SanicASGITestClient(httpx.AsyncClient):
     ) -> typing.Tuple[
         typing.Optional[Request], typing.Optional[TestingResponse]
     ]:
+        self.sanic_app.router.reset()
+        self.sanic_app.signal_router.reset()
         await self.sanic_app._startup()
 
         if not url.startswith(
@@ -407,13 +409,9 @@ class SanicASGITestClient(httpx.AsyncClient):
             "subprotocols": subprotocols,
         }
 
-        # This is required for the new Sanic router.
-        # Once that is merged we can remove this here.
-        try:
-            self.sanic_app.router.reset()
-            self.sanic_app.router.finalize()
-        except AttributeError:
-            ...
+        self.sanic_app.router.reset()
+        self.sanic_app.signal_router.reset()
+        await self.sanic_app._startup()
 
         await self.sanic_app(scope, self._ws_receive, self._ws_send)
 
