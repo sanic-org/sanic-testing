@@ -1,3 +1,4 @@
+import asyncio
 import typing
 from functools import partial
 from ipaddress import IPv6Address, ip_address
@@ -171,13 +172,8 @@ class SanicTestClient:
         server_kwargs = server_kwargs or {"auto_reload": False}
         _collect_request = partial(self._collect_request, results)
 
-        # This is required for the new Sanic router.
-        # Once that is merged we can remove this here.
-        try:
-            self.app.router.reset()
-            self.app.router.finalize()
-        except AttributeError:
-            ...
+        self.app.router.reset()
+        self.app.signal_router.reset()
 
         if gather_request:
             self.app.request_middleware.appendleft(  # type: ignore
