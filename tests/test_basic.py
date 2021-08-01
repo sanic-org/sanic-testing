@@ -2,6 +2,7 @@ import pickle
 
 import pytest
 from sanic import Sanic
+
 from sanic_testing import TestManager
 from sanic_testing.testing import SanicASGITestClient, SanicTestClient
 

@@ -351,7 +351,7 @@ class SanicASGITestClient(httpx.AsyncClient):
     ]:
         self.sanic_app.router.reset()
         self.sanic_app.signal_router.reset()
-        await self.sanic_app._startup()
+        await self.sanic_app._startup()  # type: ignore
 
         if not url.startswith(
             ("http:", "https:", "ftp:", "ftps://", "//", "ws:", "wss:")
