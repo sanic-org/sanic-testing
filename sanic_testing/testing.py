@@ -1,4 +1,3 @@
-import asyncio
 import typing
 from functools import partial
 from ipaddress import IPv6Address, ip_address

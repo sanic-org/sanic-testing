@@ -7,7 +7,6 @@ import httpx
 from sanic import Sanic
 from sanic.log import logger
 from sanic.request import Request
-from sanic.server import trigger_events
 from websockets.legacy.client import connect
 
 from .testing import HOST, PORT, TestingResponse
