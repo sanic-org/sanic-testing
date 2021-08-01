@@ -48,6 +48,10 @@ class TestingResponse(httpx.Response):
         return self._json
 
 
+def _blank(self):
+    ...
+
+
 class SanicTestClient:
     def __init__(
         self, app: Sanic, port: typing.Optional[int] = PORT, host: str = HOST
@@ -56,8 +60,12 @@ class SanicTestClient:
         self.app = app
         self.port = port
         self.host = host
-        app.listener("after_server_start")(self._start_test_mode)
-        app.listener("before_server_stop")(self._end_test_mode)
+        self.app.test_mode = True
+        self._do_request = _blank
+        app.listener("after_server_start")(self._run_request)
+
+    def _run_request(self, *args, **kwargs):
+        return self._do_request(*args, **kwargs)
 
     @classmethod
     def _start_test_mode(cls, sanic, *args, **kwargs):
@@ -163,13 +171,8 @@ class SanicTestClient:
         server_kwargs = server_kwargs or {"auto_reload": False}
         _collect_request = partial(self._collect_request, results)
 
-        # This is required for the new Sanic router.
-        # Once that is merged we can remove this here.
-        try:
-            self.app.router.reset()
-            self.app.router.finalize()
-        except AttributeError:
-            ...
+        self.app.router.reset()
+        self.app.signal_router.reset()
 
         if gather_request:
             self.app.request_middleware.appendleft(  # type: ignore
@@ -216,19 +219,16 @@ class SanicTestClient:
         # known until this function is called, so fix that here
         url = url.replace(":None/", f":{port}/")
 
-        self.app.listener("after_server_start")(
-            partial(
-                self._collect_response,
-                method,
-                url,
-                exceptions,
-                results,
-                **request_kwargs,
-            )
+        self._do_request = partial(
+            self._collect_response,
+            method,
+            url,
+            exceptions,
+            results,
+            **request_kwargs,
         )
 
         self.app.run(debug=debug, **server_kwargs)
-        self.app.listeners["after_server_start"].pop()
 
         if exceptions:
             raise ValueError(f"Exception during request: {exceptions}")
@@ -330,9 +330,6 @@ class SanicASGITestClient(httpx.AsyncClient):
         self.gather_request = True
         self.last_request = None
 
-        app.listener("after_server_start")(self._start_test_mode)
-        app.listener("before_server_stop")(self._end_test_mode)
-
     def _collect_request(self, request):
         if self.gather_request:
             self.last_request = request
@@ -352,14 +349,9 @@ class SanicASGITestClient(httpx.AsyncClient):
     ) -> typing.Tuple[
         typing.Optional[Request], typing.Optional[TestingResponse]
     ]:
-
-        # This is required for the new Sanic router.
-        # Once that is merged we can remove this here.
-        try:
-            self.sanic_app.router.reset()
-            self.sanic_app.router.finalize()
-        except AttributeError:
-            ...
+        self.sanic_app.router.reset()
+        self.sanic_app.signal_router.reset()
+        await self.sanic_app._startup()  # type: ignore
 
         if not url.startswith(
             ("http:", "https:", "ftp:", "ftps://", "//", "ws:", "wss:")
@@ -416,13 +408,9 @@ class SanicASGITestClient(httpx.AsyncClient):
             "subprotocols": subprotocols,
         }
 
-        # This is required for the new Sanic router.
-        # Once that is merged we can remove this here.
-        try:
-            self.sanic_app.router.reset()
-            self.sanic_app.router.finalize()
-        except AttributeError:
-            ...
+        self.sanic_app.router.reset()
+        self.sanic_app.signal_router.reset()
+        await self.sanic_app._startup()
 
         await self.sanic_app(scope, self._ws_receive, self._ws_send)
 
