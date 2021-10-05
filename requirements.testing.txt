@@ -1,3 +1,3 @@
-git+https://github.com/sanic-org/sanic.git@signals
+git+https://github.com/sanic-org/sanic.git
 pytest
 pytest-asyncio
