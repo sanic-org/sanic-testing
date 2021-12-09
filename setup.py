@@ -47,11 +47,14 @@ setup_kwargs = {
     ],
 }
 requirements = [
-    "httpx==0.18.*",
-    "websockets>=9.0",
+    "httpx>=0.18,<0.22"
 ]
 
-tests_require = ["pytest", "sanic==21.3", "pytest-asyncio"]
+tests_require = [
+    "pytest",
+    "sanic>=21.3",
+    "pytest-asyncio"
+]
 
 setup_kwargs["install_requires"] = requirements
 setup_kwargs["tests_require"] = tests_require
