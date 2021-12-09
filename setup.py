@@ -41,17 +41,20 @@ setup_kwargs = {
         "Development Status :: 3 - Alpha",
         "Environment :: Web Environment",
         "License :: OSI Approved :: MIT License",
-        "Programming Language :: Python :: 3.6",
         "Programming Language :: Python :: 3.7",
         "Programming Language :: Python :: 3.8",
+        "Programming Language :: Python :: 3.9",
     ],
 }
 requirements = [
-    "httpx",
-    "websockets>=9.0",
+    "httpx>=0.18,<0.22"
 ]
 
-tests_require = ["pytest", "sanic==21.3", "pytest-asyncio"]
+tests_require = [
+    "pytest",
+    "sanic>=21.3",
+    "pytest-asyncio"
+]
 
 setup_kwargs["install_requires"] = requirements
 setup_kwargs["tests_require"] = tests_require
