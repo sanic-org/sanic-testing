@@ -48,7 +48,7 @@ class TestingResponse(httpx.Response):
         return self._json
 
 
-def _blank(self):
+def _blank(*_, **__):
     ...
 
 
@@ -352,6 +352,8 @@ class SanicASGITestClient(httpx.AsyncClient):
         self.sanic_app.router.reset()
         self.sanic_app.signal_router.reset()
         await self.sanic_app._startup()  # type: ignore
+        await self.sanic_app._server_event("init", "before")
+        await self.sanic_app._server_event("init", "after")
 
         if not url.startswith(
             ("http:", "https:", "ftp:", "ftps://", "//", "ws:", "wss:")
@@ -367,6 +369,9 @@ class SanicASGITestClient(httpx.AsyncClient):
 
         self.gather_request = gather_request
         response = await super().request(method, url, *args, **kwargs)
+
+        await self.sanic_app._server_event("shutdown", "before")
+        await self.sanic_app._server_event("shutdown", "after")
 
         response.__class__ = TestingResponse
 
