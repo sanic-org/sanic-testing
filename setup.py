@@ -47,7 +47,7 @@ setup_kwargs = {
     ],
 }
 requirements = [
-    "httpx==0.18.*",
+    "httpx",
     "websockets>=9.0",
 ]
 
