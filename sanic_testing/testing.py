@@ -87,7 +87,7 @@ class SanicTestClient:
         logger.info(url)
         raw_cookies = kwargs.pop("raw_cookies", None)
         session_kwargs = kwargs.pop("session_kwargs", {})
-        if httpx_version >= (0, 20):
+        if httpx_version >= (0, 20) and method != "websocket":
             kwargs["follow_redirects"] = True
             allow_redirects = kwargs.pop("allow_redirects", None)
             if allow_redirects is not None:
