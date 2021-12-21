@@ -57,10 +57,10 @@ class SanicTestClient:
         self, app: Sanic, port: typing.Optional[int] = PORT, host: str = HOST
     ) -> None:
         """Use port=None to bind to a random port"""
+        Sanic.test_mode = True
         self.app = app
         self.port = port
         self.host = host
-        self.app.test_mode = True
         self._do_request = _blank
         app.listener("after_server_start")(self._run_request)
 
