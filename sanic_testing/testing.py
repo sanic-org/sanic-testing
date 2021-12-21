@@ -62,7 +62,7 @@ class SanicTestClient:
         self.port = port
         self.host = host
         self._do_request = _blank
-        app.listener("after_server_start")(self._run_request)
+        app.after_server_start(self._run_request)
 
     def _run_request(self, *args, **kwargs):
         return self._do_request(*args, **kwargs)
