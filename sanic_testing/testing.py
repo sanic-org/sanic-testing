@@ -3,6 +3,7 @@ from functools import partial
 from ipaddress import IPv6Address, ip_address
 from json import JSONDecodeError
 from socket import AF_INET6, SOCK_STREAM, socket
+from string import ascii_lowercase
 from types import SimpleNamespace
 
 import httpx
@@ -21,6 +22,10 @@ HOST = "127.0.0.1"
 PORT = None
 
 Sanic.test_mode = True
+
+httpx_version = tuple(
+    map(int, httpx.__version__.strip(ascii_lowercase).split("."))
+)
 
 
 class TestingResponse(httpx.Response):
@@ -82,6 +87,11 @@ class SanicTestClient:
         logger.info(url)
         raw_cookies = kwargs.pop("raw_cookies", None)
         session_kwargs = kwargs.pop("session_kwargs", {})
+        if httpx_version >= (0, 20):
+            kwargs["follow_redirects"] = True
+            allow_redirects = kwargs.pop("allow_redirects", None)
+            if allow_redirects is not None:
+                kwargs["follow_redirects"] = allow_redirects
 
         if method == "websocket":
             ws_proxy = SimpleNamespace()
