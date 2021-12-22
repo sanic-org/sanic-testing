@@ -28,7 +28,7 @@ class ReusableClient:
         server_kwargs = server_kwargs or {}
         client_kwargs = client_kwargs or {}
 
-        app.test_mode = True
+        Sanic.test_mode = True
         self.app = app
         self.host = host
         self.port = port
