@@ -74,11 +74,11 @@ class SanicTestClient:
 
     @classmethod
     def _start_test_mode(cls, sanic, *args, **kwargs):
-        sanic.test_mode = True
+        Sanic.test_mode = True
 
     @classmethod
     def _end_test_mode(cls, sanic, *args, **kwargs):
-        sanic.test_mode = False
+        Sanic.test_mode = False
 
     def get_new_session(self, **kwargs) -> httpx.AsyncClient:
         return httpx.AsyncClient(verify=False, **kwargs)
@@ -348,11 +348,11 @@ class SanicASGITestClient(httpx.AsyncClient):
 
     @classmethod
     def _start_test_mode(cls, sanic, *args, **kwargs):
-        sanic.test_mode = True
+        Sanic.test_mode = True
 
     @classmethod
     def _end_test_mode(cls, sanic, *args, **kwargs):
-        sanic.test_mode = False
+        Sanic.test_mode = False
 
     async def request(  # type: ignore
         self, method, url, gather_request=True, *args, **kwargs
