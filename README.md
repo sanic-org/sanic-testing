@@ -2,6 +2,8 @@
 
 This package is meant to be the core testing utility and clients for testing Sanic applications. It is mainly derived from `sanic.testing` which has (or will be) removed from the main Sanic repository in the future.
 
+[Documentation](https://sanicframework.org/en/plugins/sanic-testing/getting-started.html)
+
 ## Getting Started
 
     pip install sanic-testing
@@ -70,9 +72,3 @@ async def test_basic_asgi_client(app):
     assert response.body == b"foo"
     assert response.status == 200
 ```
-
-## TODO
-
-- Create convenience decorators to inject `TestManager`
-- Add more testing from Sanic core to make sure test clients are robust
-- Add ability for reusable servers in sync testing instead of destroying them on every call
