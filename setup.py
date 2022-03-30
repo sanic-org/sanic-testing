@@ -47,7 +47,7 @@ setup_kwargs = {
     ],
 }
 requirements = [
-    "httpx>=0.18,<0.22"
+    "httpx>=0.18,<0.23"
 ]
 
 tests_require = [
