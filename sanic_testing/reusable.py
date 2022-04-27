@@ -1,4 +1,5 @@
 import asyncio
+import socket
 from functools import partial
 from types import SimpleNamespace
 from typing import Any, Dict, List, Optional, Tuple
@@ -31,16 +32,20 @@ class ReusableClient:
         Sanic.test_mode = True
         self.app = app
         self.host = host
-        self.port = port
         self._loop = loop
         self.debug = False
         self._server = None
+
+        sock = socket.socket()
+        sock.bind((self.host, port or 0))
+        self.port = sock.getsockname()[1]
 
         self._session = httpx.AsyncClient(verify=False, **client_kwargs)
         self._server_co = self.app.create_server(
             host=self.host,
             debug=self.debug,
             port=self.port,
+            sock=sock,
             return_asyncio_server=True,
             **server_kwargs,
         )
