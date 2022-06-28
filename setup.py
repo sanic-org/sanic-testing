@@ -44,10 +44,11 @@ setup_kwargs = {
         "Programming Language :: Python :: 3.7",
         "Programming Language :: Python :: 3.8",
         "Programming Language :: Python :: 3.9",
+        "Programming Language :: Python :: 3.10",
     ],
 }
 requirements = [
-    "httpx>=0.18,<0.23"
+    "httpx>=0.18,<0.24"
 ]
 
 tests_require = [
