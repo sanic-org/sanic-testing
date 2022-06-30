@@ -1,10 +1,12 @@
 import asyncio
 from functools import partial
+from random import randint
 from types import SimpleNamespace
 from typing import Any, Dict, List, Optional, Tuple
 
 import httpx
 from sanic import Sanic
+from sanic.application.state import ApplicationServerInfo
 from sanic.log import logger
 from sanic.request import Request
 from websockets.legacy.client import connect
@@ -31,10 +33,22 @@ class ReusableClient:
         Sanic.test_mode = True
         self.app = app
         self.host = host
-        self.port = port
+        self.port = port or randint(5000, 65000)
         self._loop = loop
         self.debug = False
         self._server = None
+        self.app.state.server_info.append(
+            ApplicationServerInfo(
+                settings={
+                    "version": "1.1",
+                    "ssl": None,
+                    "unix": None,
+                    "sock": None,
+                    "host": self.host,
+                    "port": self.port,
+                }
+            )
+        )
 
         self._session = httpx.AsyncClient(verify=False, **client_kwargs)
         self._server_co = self.app.create_server(
