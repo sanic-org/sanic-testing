@@ -1,4 +1,6 @@
+import asyncio
 import typing
+from asyncio import Queue
 from functools import partial
 from ipaddress import IPv6Address, ip_address
 from json import JSONDecodeError
@@ -13,7 +15,7 @@ from sanic.exceptions import MethodNotSupported  # type: ignore
 from sanic.log import logger  # type: ignore
 from sanic.request import Request  # type: ignore
 from sanic.response import text  # type: ignore
-from websockets.legacy.client import connect
+from websockets.client import connect
 
 ASGI_HOST = "mockserver"
 ASGI_PORT = 1234
@@ -87,17 +89,39 @@ class SanicTestClient:
         logger.info(url)
         raw_cookies = kwargs.pop("raw_cookies", None)
         session_kwargs = kwargs.pop("session_kwargs", {})
-        if httpx_version >= (0, 20) and method != "websocket":
+        if httpx_version >= (0, 20) and not method.startswith("websocket"):
             kwargs["follow_redirects"] = True
             allow_redirects = kwargs.pop("allow_redirects", None)
             if allow_redirects is not None:
                 kwargs["follow_redirects"] = allow_redirects
 
-        if method == "websocket":
+        if method.startswith("websocket"):
             ws_proxy = SimpleNamespace()
             async with connect(url, *args, **kwargs) as websocket:
                 ws_proxy.ws = websocket
                 ws_proxy.opened = True
+                loop = asyncio.get_event_loop()
+                if method == "websocket_interactive":
+                    ws_proxy.receives = Queue()
+                    ws_proxy.sends = Queue()
+
+                    async def receiving():
+                        async for msg in ws_proxy.ws:
+                            ws_proxy.receives.append(msg)
+
+                    async def mimic_client():
+                        receiving_task = loop.create_task(receiving())
+                        while True:
+                            try:
+                                send_item = await asyncio.wait_for(
+                                    ws_proxy.sends.get(), timeout=1
+                                )
+                                await ws_proxy.ws.send(send_item)
+                            except asyncio.TimeoutError:
+                                receiving_task.cancel()
+                                break
+
+                    loop.create_task(mimic_client())
             return ws_proxy
         else:
             async with self.get_new_session(**session_kwargs) as session:
@@ -136,8 +160,8 @@ class SanicTestClient:
 
     async def _collect_response(
         self,
-        method,
-        url,
+        method: str,
+        url: str,
         exceptions,
         results,
         sanic,
@@ -147,7 +171,7 @@ class SanicTestClient:
         try:
             response = await self._local_request(method, url, **request_kwargs)
             results[-1] = response
-            if method == "websocket":
+            if method.startswith("websocket"):
                 await response.ws.close()
         except Exception as e:
             logger.exception("Exception")
@@ -223,7 +247,7 @@ class SanicTestClient:
             url = uri
         else:
             uri = uri if uri.startswith("/") else f"/{uri}"
-            scheme = "ws" if method == "websocket" else "http"
+            scheme = "ws" if method.startswith("websocket") else "http"
             url = f"{scheme}://{host}:{port}{uri}"
         # Tests construct URLs using PORT = None, which means random port not
         # known until this function is called, so fix that here
@@ -307,6 +331,11 @@ class SanicTestClient:
 
     def websocket(self, *args, **kwargs):
         return self._sanic_endpoint_test("websocket", *args, **kwargs)
+
+    def websocket_interactive(self, *args, **kwargs):
+        return self._sanic_endpoint_test(
+            "websocket_interactive", *args, **kwargs
+        )
 
 
 class TestASGIApp(ASGIApp):
