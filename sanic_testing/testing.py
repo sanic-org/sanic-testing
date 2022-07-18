@@ -100,28 +100,27 @@ class SanicTestClient:
             async with connect(url, *args, **kwargs) as websocket:
                 ws_proxy.ws = websocket
                 ws_proxy.opened = True
-                loop = asyncio.get_event_loop()
                 if method == "websocket_interactive":
                     ws_proxy.receives = Queue()
                     ws_proxy.sends = Queue()
 
                     async def receiving():
                         async for msg in ws_proxy.ws:
-                            ws_proxy.receives.append(msg)
+                            ws_proxy.receives.put_nowait(msg)
 
                     async def mimic_client():
-                        receiving_task = loop.create_task(receiving())
+                        receiving_task = asyncio.create_task(receiving())
                         while True:
                             try:
                                 send_item = await asyncio.wait_for(
-                                    ws_proxy.sends.get(), timeout=1
+                                    ws_proxy.sends.get(), timeout=5
                                 )
                                 await ws_proxy.ws.send(send_item)
                             except asyncio.TimeoutError:
                                 receiving_task.cancel()
                                 break
 
-                    loop.create_task(mimic_client())
+                    asyncio.create_task(mimic_client())
             return ws_proxy
         else:
             async with self.get_new_session(**session_kwargs) as session:
@@ -171,7 +170,7 @@ class SanicTestClient:
         try:
             response = await self._local_request(method, url, **request_kwargs)
             results[-1] = response
-            if method.startswith("websocket"):
+            if method == "websocket":
                 await response.ws.close()
         except Exception as e:
             logger.exception("Exception")
