@@ -7,7 +7,7 @@ from json import JSONDecodeError
 from socket import AF_INET6, SOCK_STREAM, socket
 from string import ascii_lowercase
 from types import SimpleNamespace
-from typing import Callable, List, Optional
+from typing import List, Optional
 
 import httpx
 from sanic import Sanic  # type: ignore
