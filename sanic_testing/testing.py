@@ -111,16 +111,16 @@ class SanicTestClient:
                 ws_proxy.ws = websocket
                 ws_proxy.opened = True
                 if ws_mimic_client:
-                    send_queue = Queue()
-                    receive_queue = Queue()
+                    send_queue: Queue[str] = Queue()
+                    receive_queue: Queue[str] = Queue()
 
                     async def receiving():
                         async for msg in ws_proxy.ws:
                             await receive_queue.put(msg)
 
                     async def running_ws_mimic_client(
-                        send_queue: Queue,
-                        receive_queue: Queue,
+                        send_queue: Queue[str],
+                        receive_queue: Queue[str],
                         exceptions: List[Exception],
                     ):
                         try:
