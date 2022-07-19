@@ -125,7 +125,7 @@ class SanicTestClient:
                     ):
                         try:
                             await ws_mimic_client(send_queue, receive_queue)
-                        except BaseException as e:
+                        except Exception as e:
                             exceptions.append(e)
                             raise e
 
