@@ -201,7 +201,6 @@ class SanicTestClient:
         server_kwargs: typing.Optional[typing.Dict[str, typing.Any]] = None,
         host: Optional[str] = None,
         allow_none: bool = False,
-        ws_mimic_client: Optional[Callable[[Queue, Queue], None]] = None,
         *request_args,
         **request_kwargs,
     ) -> typing.Tuple[
@@ -267,7 +266,6 @@ class SanicTestClient:
             url,
             exceptions,
             results,
-            ws_mimic_client=ws_mimic_client,
             **request_kwargs,
         )
 
