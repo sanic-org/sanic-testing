@@ -88,25 +88,25 @@ class SanicTestClient:
 
     async def ws_receiving(
         self,
-        receive_queue: Queue[Union[str, bytes]],
+        receive_queue: Queue,
         ws: WebSocketClientProtocol,
     ):
         async for msg in ws:
             await receive_queue.put(msg)
 
     async def ws_sending(
-        self, send_queue: Queue[Union[str, bytes]], ws: WebSocketClientProtocol
+        self, send_queue: Queue, ws: WebSocketClientProtocol
     ):
         send_item = await send_queue.get()
         await ws.send(send_item)
 
     async def running_ws_mimic_client(
         self,
-        send_queue: Queue[Union[str, bytes]],
-        receive_queue: Queue[Union[str, bytes]],
+        send_queue: Queue,
+        receive_queue: Queue,
         exceptions: List[Exception],
         ws_mimic_client: typing.Callable[
-            [Queue[Union[str, bytes]], Queue[Union[str, bytes]]],
+            [Queue, Queue],
             typing.Awaitable[None],
         ],
     ):
