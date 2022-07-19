@@ -94,9 +94,7 @@ class SanicTestClient:
         async for msg in ws:
             await receive_queue.put(msg)
 
-    async def ws_sending(
-        self, send_queue: Queue, ws: WebSocketClientProtocol
-    ):
+    async def ws_sending(self, send_queue: Queue, ws: WebSocketClientProtocol):
         send_item = await send_queue.get()
         await ws.send(send_item)
 
@@ -136,7 +134,6 @@ class SanicTestClient:
         if method == "websocket":
             ws_proxy = SimpleNamespace()
             ws_mimic_client = kwargs.pop("ws_mimic_client", None)
-            ws_send_queue_timeout = kwargs.pop("ws_timeout", 5)
             async with connect(url, *args, **kwargs) as websocket:
                 ws_proxy.ws = websocket
                 ws_proxy.opened = True
