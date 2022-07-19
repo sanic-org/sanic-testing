@@ -7,7 +7,7 @@ from json import JSONDecodeError
 from socket import AF_INET6, SOCK_STREAM, socket
 from string import ascii_lowercase
 from types import SimpleNamespace
-from typing import List, Optional
+from typing import List, Optional, Union
 
 import httpx
 from sanic import Sanic  # type: ignore
@@ -16,7 +16,7 @@ from sanic.exceptions import MethodNotSupported  # type: ignore
 from sanic.log import logger  # type: ignore
 from sanic.request import Request  # type: ignore
 from sanic.response import text  # type: ignore
-from websockets.legacy.client import connect
+from websockets.client import WebSocketClientProtocol, connect
 
 ASGI_HOST = "mockserver"
 ASGI_PORT = 1234
@@ -86,6 +86,36 @@ class SanicTestClient:
     def get_new_session(self, **kwargs) -> httpx.AsyncClient:
         return httpx.AsyncClient(verify=False, **kwargs)
 
+    async def ws_receiving(
+        self,
+        receive_queue: Queue[Union[str, bytes]],
+        ws: WebSocketClientProtocol,
+    ):
+        async for msg in ws:
+            await receive_queue.put(msg)
+
+    async def ws_sending(
+        self, send_queue: Queue[Union[str, bytes]], ws: WebSocketClientProtocol
+    ):
+        send_item = await send_queue.get()
+        await ws.send(send_item)
+
+    async def running_ws_mimic_client(
+        self,
+        send_queue: Queue[Union[str, bytes]],
+        receive_queue: Queue[Union[str, bytes]],
+        exceptions: List[Exception],
+        ws_mimic_client: typing.Callable[
+            [Queue[Union[str, bytes]], Queue[Union[str, bytes]]],
+            typing.Awaitable[None],
+        ],
+    ):
+        try:
+            await ws_mimic_client(send_queue, receive_queue)
+        except Exception as e:
+            exceptions.append(e)
+            raise e
+
     async def _local_request(
         self,
         method: str,
@@ -111,42 +141,20 @@ class SanicTestClient:
                 ws_proxy.ws = websocket
                 ws_proxy.opened = True
                 if ws_mimic_client:
-                    send_queue: Queue[str] = Queue()
-                    receive_queue: Queue[str] = Queue()
+                    send_queue: Queue[Union[str, bytes]] = Queue()
+                    receive_queue: Queue[Union[str, bytes]] = Queue()
 
-                    async def receiving():
-                        async for msg in ws_proxy.ws:
-                            await receive_queue.put(msg)
-
-                    async def running_ws_mimic_client(
-                        send_queue: Queue[str],
-                        receive_queue: Queue[str],
-                        exceptions: List[Exception],
-                    ):
-                        try:
-                            await ws_mimic_client(send_queue, receive_queue)
-                        except Exception as e:
-                            exceptions.append(e)
-                            raise e
-
-                    receiving_task = asyncio.create_task(receiving())
-                    ws_mimic_client_task = asyncio.create_task(
-                        running_ws_mimic_client(
-                            send_queue, receive_queue, exceptions
-                        )
+                    receiving_task = asyncio.create_task(
+                        self.ws_receiving(receive_queue, websocket)
                     )
-                    while True:
-                        try:
-                            if ws_mimic_client_task.done():
-                                break
-                            send_item = await asyncio.wait_for(
-                                send_queue.get(), timeout=ws_send_queue_timeout
-                            )
-                            await ws_proxy.ws.send(send_item)
-                        except asyncio.TimeoutError:
-                            ws_mimic_client_task.cancel()
-                            break
+                    sending_task = asyncio.create_task(
+                        self.ws_sending(send_queue, websocket)
+                    )
+                    await self.running_ws_mimic_client(
+                        send_queue, receive_queue, exceptions, ws_mimic_client
+                    )
                     receiving_task.cancel()
+                    sending_task.cancel()
             return ws_proxy
         else:
             async with self.get_new_session(**session_kwargs) as session:
