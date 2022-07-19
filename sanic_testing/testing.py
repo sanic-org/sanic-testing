@@ -1,10 +1,13 @@
+import asyncio
 import typing
+from asyncio import AbstractEventLoop, Queue
 from functools import partial
 from ipaddress import IPv6Address, ip_address
 from json import JSONDecodeError
 from socket import AF_INET6, SOCK_STREAM, socket
 from string import ascii_lowercase
 from types import SimpleNamespace
+from typing import Callable, List, Optional
 
 import httpx
 from sanic import Sanic  # type: ignore
@@ -95,9 +98,37 @@ class SanicTestClient:
 
         if method == "websocket":
             ws_proxy = SimpleNamespace()
+            ws_mimic_client = kwargs.pop("ws_mimic_client", None)
+            if ws_mimic_client:
+                ws_timeout = kwargs.pop("ws_timeout", 5)
             async with connect(url, *args, **kwargs) as websocket:
                 ws_proxy.ws = websocket
                 ws_proxy.opened = True
+                if ws_mimic_client:
+                    send_queue = Queue()
+                    receive_queue = Queue()
+
+                    async def receiving():
+                        async for msg in ws_proxy.ws:
+                            await receive_queue.put(msg)
+
+                    receiving_task = asyncio.create_task(receiving())
+                    ws_mimic_client_task = asyncio.create_task(
+                        ws_mimic_client(send_queue, receive_queue)
+                    )
+                    while True:
+                        try:
+                            if ws_mimic_client_task.done():
+                                break
+                            
+                            send_item = await asyncio.wait_for(
+                                send_queue.get(), timeout=ws_timeout
+                            )
+                            await ws_proxy.ws.send(send_item)
+                        except asyncio.TimeoutError:
+                            ws_mimic_client_task.cancel()
+                            break
+                    receiving_task.cancel()
             return ws_proxy
         else:
             async with self.get_new_session(**session_kwargs) as session:
@@ -136,12 +167,12 @@ class SanicTestClient:
 
     async def _collect_response(
         self,
-        method,
-        url,
-        exceptions,
-        results,
-        sanic,
-        loop,
+        method: str,
+        url: str,
+        exceptions: List[Exception],
+        results: list,
+        sanic: Sanic,
+        loop: AbstractEventLoop,
         **request_kwargs,
     ):
         try:
@@ -168,8 +199,9 @@ class SanicTestClient:
         gather_request: bool = True,
         debug: bool = False,
         server_kwargs: typing.Optional[typing.Dict[str, typing.Any]] = None,
-        host: str = None,
+        host: Optional[str] = None,
         allow_none: bool = False,
+        ws_mimic_client: Optional[Callable[[Queue, Queue], None]] = None,
         *request_args,
         **request_kwargs,
     ) -> typing.Tuple[
@@ -235,6 +267,7 @@ class SanicTestClient:
             url,
             exceptions,
             results,
+            ws_mimic_client=ws_mimic_client,
             **request_kwargs,
         )
 
