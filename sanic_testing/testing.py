@@ -86,7 +86,14 @@ class SanicTestClient:
     def get_new_session(self, **kwargs) -> httpx.AsyncClient:
         return httpx.AsyncClient(verify=False, **kwargs)
 
-    async def _local_request(self, method: str, url: str, *args, **kwargs):
+    async def _local_request(
+        self,
+        method: str,
+        url: str,
+        exceptions: List[Exception],
+        *args,
+        **kwargs,
+    ):
         logger.info(url)
         raw_cookies = kwargs.pop("raw_cookies", None)
         session_kwargs = kwargs.pop("session_kwargs", {})
@@ -99,8 +106,7 @@ class SanicTestClient:
         if method == "websocket":
             ws_proxy = SimpleNamespace()
             ws_mimic_client = kwargs.pop("ws_mimic_client", None)
-            if ws_mimic_client:
-                ws_timeout = kwargs.pop("ws_timeout", 5)
+            ws_send_queue_timeout = kwargs.pop("ws_timeout", 5)
             async with connect(url, *args, **kwargs) as websocket:
                 ws_proxy.ws = websocket
                 ws_proxy.opened = True
@@ -112,17 +118,29 @@ class SanicTestClient:
                         async for msg in ws_proxy.ws:
                             await receive_queue.put(msg)
 
+                    async def running_ws_mimic_client(
+                        send_queue: Queue,
+                        receive_queue: Queue,
+                        exceptions: List[Exception],
+                    ):
+                        try:
+                            await ws_mimic_client(send_queue, receive_queue)
+                        except BaseException as e:
+                            exceptions.append(e)
+                            raise e
+
                     receiving_task = asyncio.create_task(receiving())
                     ws_mimic_client_task = asyncio.create_task(
-                        ws_mimic_client(send_queue, receive_queue)
+                        running_ws_mimic_client(
+                            send_queue, receive_queue, exceptions
+                        )
                     )
                     while True:
                         try:
                             if ws_mimic_client_task.done():
                                 break
-                            
                             send_item = await asyncio.wait_for(
-                                send_queue.get(), timeout=ws_timeout
+                                send_queue.get(), timeout=ws_send_queue_timeout
                             )
                             await ws_proxy.ws.send(send_item)
                         except asyncio.TimeoutError:
@@ -176,7 +194,9 @@ class SanicTestClient:
         **request_kwargs,
     ):
         try:
-            response = await self._local_request(method, url, **request_kwargs)
+            response = await self._local_request(
+                method, url, exceptions, **request_kwargs
+            )
             results[-1] = response
             if method == "websocket":
                 await response.ws.close()
