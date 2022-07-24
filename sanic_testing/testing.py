@@ -1,4 +1,5 @@
 import typing
+from asyncio import sleep
 from functools import partial
 from ipaddress import IPv6Address, ip_address
 from json import JSONDecodeError
@@ -13,6 +14,7 @@ from sanic.exceptions import MethodNotSupported  # type: ignore
 from sanic.log import logger  # type: ignore
 from sanic.request import Request  # type: ignore
 from sanic.response import text  # type: ignore
+from websockets.exceptions import ConnectionClosedOK
 from websockets.legacy.client import connect
 
 ASGI_HOST = "mockserver"
@@ -95,9 +97,40 @@ class SanicTestClient:
 
         if method == "websocket":
             ws_proxy = SimpleNamespace()
+            mimic = kwargs.pop("mimic", None)
             async with connect(url, *args, **kwargs) as websocket:
                 ws_proxy.ws = websocket
                 ws_proxy.opened = True
+                ws_proxy.received = []
+                ws_proxy.sent = []
+
+                if mimic:
+                    do_send = websocket.send
+                    do_recv = websocket.recv
+
+                    async def send(data):
+                        ws_proxy.received.append(data)
+                        await do_send(data)
+
+                    async def recv():
+                        message = await do_recv()
+                        ws_proxy.sent.append(message)
+
+                    websocket.send = send  # type: ignore
+                    websocket.recv = recv  # type: ignore
+
+                    async def do_mimic():
+                        try:
+                            await mimic(websocket)
+                        except ConnectionClosedOK:
+                            ...
+                        else:
+                            await websocket.send("")
+
+                    task = self.app.loop.create_task(do_mimic())
+
+                    while not task.done():
+                        await sleep(0.1)
             return ws_proxy
         else:
             async with self.get_new_session(**session_kwargs) as session:

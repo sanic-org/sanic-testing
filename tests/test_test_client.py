@@ -1,6 +1,7 @@
 import asyncio
 
 import pytest
+from sanic import Websocket
 from sanic.request import Request
 
 
@@ -16,7 +17,7 @@ def test_basic_test_client(app, method):
     assert response.content_type == "text/plain; charset=utf-8"
 
 
-def test_websocket_route(app):
+def test_websocket_route_basic(app):
     ev = asyncio.Event()
 
     @app.websocket("/ws")
@@ -28,6 +29,23 @@ def test_websocket_route(app):
     request, response = app.test_client.websocket("/ws")
     assert response.opened is True
     assert ev.is_set()
+
+
+def test_websocket_route_queue(app):
+    async def client_mimic(websocket):
+        await websocket.send("foo")
+        await websocket.recv()
+
+    @app.websocket("/ws")
+    async def handler(request, ws: Websocket):
+        while True:
+            await ws.send("hello!")
+            if not await ws.recv():
+                break
+
+    _, response = app.test_client.websocket("/ws", mimic=client_mimic)
+    assert response.sent == ["hello!"]
+    assert response.received == ["foo", ""]
 
 
 def test_listeners(app):
