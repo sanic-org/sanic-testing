@@ -1,8 +1,9 @@
 import asyncio
 
 import pytest
-from sanic import Websocket
+from sanic import Sanic, Websocket
 from sanic.request import Request
+from websockets.client import WebSocketClientProtocol
 
 
 @pytest.mark.parametrize(
@@ -31,8 +32,8 @@ def test_websocket_route_basic(app):
     assert ev.is_set()
 
 
-def test_websocket_route_queue(app):
-    async def client_mimic(websocket):
+def test_websocket_route_queue(app: Sanic):
+    async def client_mimic(websocket: WebSocketClientProtocol):
         await websocket.send("foo")
         await websocket.recv()
 
@@ -45,7 +46,19 @@ def test_websocket_route_queue(app):
 
     _, response = app.test_client.websocket("/ws", mimic=client_mimic)
     assert response.sent == ["hello!"]
-    assert response.received == ["foo", ""]
+    assert response.received == ["foo"]
+
+
+def test_websocket_client_mimic_failed(app: Sanic):
+    @app.websocket("/ws")
+    async def handler(request, ws: Websocket):
+        pass
+
+    async def client_mimic(websocket: WebSocketClientProtocol):
+        raise Exception("Should fails")
+
+    with pytest.raises(Exception, match="Should fails"):
+        _, response = app.test_client.websocket("/ws", mimic=client_mimic)
 
 
 def test_listeners(app):

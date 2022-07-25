@@ -1,5 +1,4 @@
 import typing
-from asyncio import sleep
 from functools import partial
 from ipaddress import IPv6Address, ip_address
 from json import JSONDecodeError
@@ -119,18 +118,10 @@ class SanicTestClient:
                     websocket.send = send  # type: ignore
                     websocket.recv = recv  # type: ignore
 
-                    async def do_mimic():
-                        try:
-                            await mimic(websocket)
-                        except ConnectionClosedOK:
-                            ...
-                        else:
-                            await websocket.send("")
-
-                    task = self.app.loop.create_task(do_mimic())
-
-                    while not task.done():
-                        await sleep(0.1)
+                    try:
+                        await mimic(websocket)
+                    except ConnectionClosedOK:
+                        pass
             return ws_proxy
         else:
             async with self.get_new_session(**session_kwargs) as session:
