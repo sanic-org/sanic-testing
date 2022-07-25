@@ -45,8 +45,8 @@ def test_websocket_route_queue(app: Sanic):
                 break
 
     _, response = app.test_client.websocket("/ws", mimic=client_mimic)
-    assert response.sent == ["hello!"]
-    assert response.received == ["foo"]
+    assert response.server_sent == ["hello!"]
+    assert response.server_received == ["foo", ""]
 
 
 def test_websocket_client_mimic_failed(app: Sanic):
@@ -58,7 +58,7 @@ def test_websocket_client_mimic_failed(app: Sanic):
         raise Exception("Should fails")
 
     with pytest.raises(Exception, match="Should fails"):
-        _, response = app.test_client.websocket("/ws", mimic=client_mimic)
+        app.test_client.websocket("/ws", mimic=client_mimic)
 
 
 def test_listeners(app):
