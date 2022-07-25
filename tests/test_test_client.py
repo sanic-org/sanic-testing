@@ -45,8 +45,8 @@ def test_websocket_route_queue(app: Sanic):
                 break
 
     _, response = app.test_client.websocket("/ws", mimic=client_mimic)
-    assert response.received == ["hello!"]
-    assert response.sent == ["foo"]
+    assert response.sent == ["hello!"]
+    assert response.received == ["foo"]
 
 
 def test_websocket_client_mimic_failed(app: Sanic):

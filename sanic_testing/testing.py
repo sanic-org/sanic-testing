@@ -108,12 +108,12 @@ class SanicTestClient:
                     do_recv = websocket.recv
 
                     async def send(data):
-                        ws_proxy.sent.append(data)
+                        ws_proxy.received.append(data)
                         await do_send(data)
 
                     async def recv():
                         message = await do_recv()
-                        ws_proxy.received.append(message)
+                        ws_proxy.sent.append(message)
 
                     websocket.send = send  # type: ignore
                     websocket.recv = recv  # type: ignore
