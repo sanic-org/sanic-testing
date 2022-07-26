@@ -1,7 +1,7 @@
 import asyncio
+import typing
 from functools import partial
 from random import randint
-from types import SimpleNamespace
 from typing import Any, Dict, List, Optional, Tuple
 
 import httpx
@@ -9,7 +9,8 @@ from sanic import Sanic
 from sanic.application.state import ApplicationServerInfo
 from sanic.log import logger
 from sanic.request import Request
-from websockets.legacy.client import connect
+
+from sanic_testing.websocket import websocket_proxy
 
 from .testing import HOST, PORT, TestingResponse
 
@@ -157,11 +158,7 @@ class ReusableClient:
         raw_cookies = kwargs.pop("raw_cookies", None)
 
         if method == "websocket":
-            ws_proxy = SimpleNamespace()
-            async with connect(url, *args, **kwargs) as websocket:
-                ws_proxy.ws = websocket
-                ws_proxy.opened = True
-            return ws_proxy
+            return await websocket_proxy(url, *args, **kwargs)
         else:
             session = self._session
 
@@ -225,5 +222,13 @@ class ReusableClient:
     def head(self, *args, **kwargs):
         return self._sanic_endpoint_test("head", *args, **kwargs)
 
-    def websocket(self, *args, **kwargs):
+    def websocket(
+        self,
+        *args,
+        mimic: typing.Optional[
+            typing.Callable[..., typing.Coroutine[None, None, typing.Any]]
+        ] = None,
+        **kwargs,
+    ):
+        kwargs["mimic"] = mimic
         return self._sanic_endpoint_test("websocket", *args, **kwargs)

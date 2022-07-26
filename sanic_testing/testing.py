@@ -4,7 +4,6 @@ from ipaddress import IPv6Address, ip_address
 from json import JSONDecodeError
 from socket import AF_INET6, SOCK_STREAM, socket
 from string import ascii_lowercase
-from types import SimpleNamespace
 
 import httpx
 from sanic import Sanic  # type: ignore
@@ -13,7 +12,8 @@ from sanic.exceptions import MethodNotSupported  # type: ignore
 from sanic.log import logger  # type: ignore
 from sanic.request import Request  # type: ignore
 from sanic.response import text  # type: ignore
-from websockets.legacy.client import connect
+
+from sanic_testing.websocket import websocket_proxy
 
 ASGI_HOST = "mockserver"
 ASGI_PORT = 1234
@@ -94,11 +94,7 @@ class SanicTestClient:
                 kwargs["follow_redirects"] = allow_redirects
 
         if method == "websocket":
-            ws_proxy = SimpleNamespace()
-            async with connect(url, *args, **kwargs) as websocket:
-                ws_proxy.ws = websocket
-                ws_proxy.opened = True
-            return ws_proxy
+            return await websocket_proxy(url, *args, **kwargs)
         else:
             async with self.get_new_session(**session_kwargs) as session:
 
@@ -305,7 +301,15 @@ class SanicTestClient:
     def head(self, *args, **kwargs):
         return self._sanic_endpoint_test("head", *args, **kwargs)
 
-    def websocket(self, *args, **kwargs):
+    def websocket(
+        self,
+        *args,
+        mimic: typing.Optional[
+            typing.Callable[..., typing.Coroutine[None, None, typing.Any]]
+        ] = None,
+        **kwargs,
+    ):
+        kwargs["mimic"] = mimic
         return self._sanic_endpoint_test("websocket", *args, **kwargs)
 
 
@@ -397,7 +401,21 @@ class SanicASGITestClient(httpx.AsyncClient):
     async def _ws_send(cls, message):
         pass
 
-    async def websocket(self, uri, subprotocols=None, *args, **kwargs):
+    async def websocket(
+        self,
+        uri,
+        subprotocols=None,
+        *args,
+        mimic: typing.Optional[
+            typing.Callable[..., typing.Coroutine[None, None, typing.Any]]
+        ] = None,
+        **kwargs,
+    ):
+        if mimic:
+            raise RuntimeError(
+                "SanicASGITestClient does not currently support the mimic "
+                "keyword argument. Please use SanicTestClient instead."
+            )
         scheme = "ws"
         path = uri
         root_path = f"{scheme}://{ASGI_HOST}:{ASGI_PORT}"
