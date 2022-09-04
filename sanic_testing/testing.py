@@ -234,7 +234,7 @@ class SanicTestClient:
             **request_kwargs,
         )
 
-        self.app.run(debug=debug, **server_kwargs)
+        self.app.run(debug=debug, single_process=True, **server_kwargs)
 
         if exceptions:
             raise ValueError(f"Exception during request: {exceptions}")
