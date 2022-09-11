@@ -47,15 +47,9 @@ setup_kwargs = {
         "Programming Language :: Python :: 3.10",
     ],
 }
-requirements = [
-    "httpx>=0.18,<0.24"
-]
+requirements = ["httpx>=0.18,<0.24"]
 
-tests_require = [
-    "pytest",
-    "sanic>=21.3",
-    "pytest-asyncio"
-]
+tests_require = ["pytest", "sanic>=22.9", "pytest-asyncio"]
 
 setup_kwargs["install_requires"] = requirements
 setup_kwargs["tests_require"] = tests_require
