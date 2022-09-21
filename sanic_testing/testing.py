@@ -372,6 +372,11 @@ class SanicASGITestClient(httpx.AsyncClient):
         await self.sanic_app._startup()  # type: ignore
         await self.sanic_app._server_event("init", "before")
         await self.sanic_app._server_event("init", "after")
+        for route in self.sanic_app.router.routes:
+            if self._collect_request not in route.extra.request_middleware:
+                route.extra.request_middleware.appendleft(
+                    self._collect_request
+                )
 
         if not url.startswith(
             ("http:", "https:", "ftp:", "ftps://", "//", "ws:", "wss:")

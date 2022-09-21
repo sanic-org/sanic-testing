@@ -62,6 +62,7 @@ class ReusableClient:
 
     def __enter__(self):
         self.run()
+        return self
 
     def __exit__(self, *_):
         self.stop()
@@ -113,6 +114,10 @@ class ReusableClient:
             self.app.request_middleware.appendleft(  # type: ignore
                 _collect_request
             )
+
+            for route in self.app.router.routes:
+                if _collect_request not in route.extra.request_middleware:
+                    route.extra.request_middleware.appendleft(_collect_request)
 
         if uri.startswith(
             ("http:", "https:", "ftp:", "ftps://", "//", "ws:", "wss:")
