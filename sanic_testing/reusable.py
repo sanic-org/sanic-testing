@@ -45,6 +45,7 @@ class ReusableClient:
                     "ssl": None,
                     "unix": None,
                     "sock": None,
+                    "loop": None,
                     "host": self.host,
                     "port": self.port,
                 }
