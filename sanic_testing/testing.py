@@ -21,7 +21,6 @@ ASGI_BASE_URL = f"http://{ASGI_HOST}:{ASGI_PORT}"
 HOST = "127.0.0.1"
 PORT = None
 
-Sanic.test_mode = True
 
 httpx_version = tuple(
     map(int, httpx.__version__.strip(ascii_lowercase).split("."))
@@ -164,7 +163,7 @@ class SanicTestClient:
         gather_request: bool = True,
         debug: bool = False,
         server_kwargs: typing.Optional[typing.Dict[str, typing.Any]] = None,
-        host: str = None,
+        host: typing.Optional[str] = None,
         allow_none: bool = False,
         *request_args,
         **request_kwargs,
@@ -335,6 +334,7 @@ class SanicASGITestClient(httpx.AsyncClient):
         base_url: str = ASGI_BASE_URL,
         suppress_exceptions: bool = False,
     ) -> None:
+        Sanic.test_mode = True
 
         app.__class__.__call__ = app_call_with_return  # type: ignore
         app.asgi = True
