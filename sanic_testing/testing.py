@@ -448,6 +448,7 @@ class SanicASGITestClient(httpx.AsyncClient):
             "scheme": scheme,
             "root_path": root_path,
             "path": path,
+            "raw_path": path.encode(),
             "query_string": b"",
             "subprotocols": subprotocols,
         }
