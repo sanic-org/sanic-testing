@@ -19,7 +19,6 @@ async def test_basic_asgi_client(app, method):
 
 @pytest.mark.asyncio
 async def test_websocket_route(app):
-
     ev = asyncio.Event()
 
     @app.websocket("/ws")
