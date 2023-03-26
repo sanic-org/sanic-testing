@@ -6,14 +6,14 @@ from socket import AF_INET6, SOCK_STREAM, socket
 from string import ascii_lowercase
 
 import httpx
+from sanic_testing.websocket import websocket_proxy
+
 from sanic import Sanic  # type: ignore
 from sanic.asgi import ASGIApp  # type: ignore
-from sanic.exceptions import MethodNotSupported  # type: ignore
+from sanic.exceptions import MethodNotSupported, ServerError  # type: ignore
 from sanic.log import logger  # type: ignore
 from sanic.request import Request  # type: ignore
 from sanic.response import text  # type: ignore
-
-from sanic_testing.websocket import websocket_proxy
 
 ASGI_HOST = "mockserver"
 ASGI_PORT = 1234
@@ -96,7 +96,6 @@ class SanicTestClient:
             return await websocket_proxy(url, *args, **kwargs)
         else:
             async with self.get_new_session(**session_kwargs) as session:
-
                 try:
                     if method == "request":
                         args = tuple([url] + list(args))
@@ -184,7 +183,10 @@ class SanicTestClient:
                 _collect_request
             )
 
-        self.app.exception(MethodNotSupported)(self._error_handler)
+        try:
+            self.app.exception(MethodNotSupported)(self._error_handler)
+        except ServerError:
+            ...
 
         if self.port:
             server_kwargs = dict(
