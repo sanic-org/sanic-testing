@@ -6,14 +6,14 @@ from socket import AF_INET6, SOCK_STREAM, socket
 from string import ascii_lowercase
 
 import httpx
-from sanic_testing.websocket import websocket_proxy
-
 from sanic import Sanic  # type: ignore
 from sanic.asgi import ASGIApp  # type: ignore
 from sanic.exceptions import MethodNotSupported, ServerError  # type: ignore
 from sanic.log import logger  # type: ignore
 from sanic.request import Request  # type: ignore
 from sanic.response import text  # type: ignore
+
+from sanic_testing.websocket import websocket_proxy
 
 ASGI_HOST = "mockserver"
 ASGI_PORT = 1234
