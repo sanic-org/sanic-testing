@@ -36,6 +36,7 @@ async def websocket_proxy(url, *args, **kwargs) -> WebsocketProxy:
             async def recv():
                 message = await do_recv()
                 ws_proxy.client_received.append(message)
+                return message
 
             websocket.send = send  # type: ignore
             websocket.recv = recv  # type: ignore
