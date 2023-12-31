@@ -179,9 +179,7 @@ class SanicTestClient:
         self.app.signal_router.reset()
 
         if gather_request:
-            self.app.request_middleware.appendleft(  # type: ignore
-                _collect_request
-            )
+            self.app.request_middleware.appendleft(_collect_request)  # type: ignore  # noqa
 
         try:
             self.app.exception(MethodNotSupported)(self._error_handler)
@@ -246,9 +244,7 @@ class SanicTestClient:
 
         if gather_request:
             try:
-                self.app.request_middleware.remove(  # type: ignore
-                    _collect_request
-                )
+                self.app.request_middleware.remove(_collect_request)  # type: ignore  # noqa
             except BaseException:  # noqa
                 pass
 
@@ -388,8 +384,8 @@ class SanicASGITestClient(httpx.AsyncClient):
             url = f"{scheme}://{ASGI_HOST}:{ASGI_PORT}{url}"
 
         if self._collect_request not in self.sanic_app.request_middleware:
-            self.sanic_app.request_middleware.appendleft(  # type: ignore
-                self._collect_request
+            self.sanic_app.request_middleware.appendleft(
+                self._collect_request  # type: ignore
             )
 
         self.gather_request = gather_request
