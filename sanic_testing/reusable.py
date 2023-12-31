@@ -112,9 +112,7 @@ class ReusableClient:
 
         if gather_request:
             _collect_request = partial(self._collect_request, request_data)
-            self.app.request_middleware.appendleft(  # type: ignore
-                _collect_request
-            )
+            self.app.request_middleware.appendleft(_collect_request)  # type: ignore  # noqa
 
             for route in self.app.router.routes:
                 if _collect_request not in route.extra.request_middleware:
@@ -137,9 +135,7 @@ class ReusableClient:
         )
 
         try:
-            self.app.request_middleware.remove(  # type: ignore
-                _collect_request
-            )
+            self.app.request_middleware.remove(_collect_request)  # type: ignore  # noqa
         except BaseException:  # noqa
             pass
 
