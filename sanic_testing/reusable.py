@@ -81,14 +81,15 @@ class ReusableClient:
         self._run(
             self.app._server_event("shutdown", "before", loop=self._loop)
         )
+        if self._session:
+            self._run(self._session.aclose())
+            self._session = None
+
         if self._server:
             self._server.close()
             self._run(self._server.wait_closed())
             self._server = None
 
-        if self._session:
-            self._run(self._session.aclose())
-            self._session = None
         self._run(self.app._server_event("shutdown", "after", loop=self._loop))
 
     def _sanic_endpoint_test(
