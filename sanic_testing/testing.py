@@ -345,6 +345,11 @@ class SanicASGITestClient(httpx.AsyncClient):
 
         self.gather_request = True
         self.last_request = None
+        self._server_is_running = False
+
+    @property
+    def server_is_running(self):
+        return self._server_is_running
 
     def _collect_request(self, request):
         if self.gather_request:
@@ -360,13 +365,7 @@ class SanicASGITestClient(httpx.AsyncClient):
     def _end_test_mode(cls, sanic, *args, **kwargs):
         Sanic.test_mode = False
 
-    async def request(  # type: ignore
-        self, method, url, gather_request=True, *args, **kwargs
-    ) -> typing.Tuple[
-        typing.Optional[Request], typing.Optional[TestingResponse]
-    ]:
-        self.sanic_app.router.reset()
-        self.sanic_app.signal_router.reset()
+    async def run(self):
         await self.sanic_app._startup()  # type: ignore
         await self.sanic_app._server_event("init", "before")
         await self.sanic_app._server_event("init", "after")
@@ -375,6 +374,25 @@ class SanicASGITestClient(httpx.AsyncClient):
                 route.extra.request_middleware.appendleft(
                     self._collect_request
                 )
+
+        self._server_is_running = True
+
+    async def stop(self):
+        await self.sanic_app._server_event("shutdown", "before")
+        await self.sanic_app._server_event("shutdown", "after")
+
+        self._server_is_running = False
+
+    async def request(  # type: ignore
+        self, method, url, gather_request=True, *args, **kwargs
+    ) -> typing.Tuple[
+        typing.Optional[Request], typing.Optional[TestingResponse]
+    ]:
+        stop_after_request = False
+
+        if not self._server_is_running:
+            await self.run()
+            stop_after_request = True
 
         if not url.startswith(
             ("http:", "https:", "ftp:", "ftps://", "//", "ws:", "wss:")
@@ -391,8 +409,8 @@ class SanicASGITestClient(httpx.AsyncClient):
         self.gather_request = gather_request
         response = await super().request(method, url, *args, **kwargs)
 
-        await self.sanic_app._server_event("shutdown", "before")
-        await self.sanic_app._server_event("shutdown", "after")
+        if stop_after_request:
+            await self.stop()
 
         response.__class__ = TestingResponse
 
@@ -474,3 +492,9 @@ class SanicASGITestClient(httpx.AsyncClient):
         # Need to create a new CookieJar when unpickling,
         # because it was killed on Pickle
         self._cookies = httpx.Cookies()
+
+    async def __aenter__(self):
+        await self.run()
+
+    async def __aexit__(self, *args):
+        await self.stop()

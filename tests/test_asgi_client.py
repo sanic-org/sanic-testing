@@ -18,6 +18,49 @@ async def test_basic_asgi_client(app, method):
 
 
 @pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "method", ["get", "post", "patch", "put", "delete", "options"]
+)
+async def test_asgi_client_as_async_context_manager(app, method):
+    assert app.asgi_client.server_is_running is False
+
+    async with app.asgi_client:
+        assert app.asgi_client.server_is_running is True
+
+        request, response = await getattr(app.asgi_client, method)("/")
+
+        assert isinstance(request, Request)
+        assert response.body == b"foo"
+        assert response.status == 200
+        assert response.content_type == "text/plain; charset=utf-8"
+
+    assert app.asgi_client.server_is_running is False
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "method", ["get", "post", "patch", "put", "delete", "options"]
+)
+async def test_asgi_client_manual_run_and_stop(app, method):
+    assert app.asgi_client.server_is_running is False
+
+    await app.asgi_client.run()
+
+    assert app.asgi_client.server_is_running is True
+
+    request, response = await getattr(app.asgi_client, method)("/")
+
+    assert isinstance(request, Request)
+    assert response.body == b"foo"
+    assert response.status == 200
+    assert response.content_type == "text/plain; charset=utf-8"
+
+    await app.asgi_client.stop()
+
+    assert app.asgi_client.server_is_running is False
+
+
+@pytest.mark.asyncio
 async def test_websocket_route(app):
     ev = asyncio.Event()
 
